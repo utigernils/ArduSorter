@@ -32,6 +32,8 @@ A web-based machine learning sorting system that combines computer vision with A
 - **Model Files**: TensorFlow.js model in JSON format with corresponding weight files
 
 ## Installation
+> [!TIP]
+> Installation is not actually needed, I host the newest build of ArduSorter [here](https://ardu-sorter.utigernils.ch/)
 
 1. **Clone the repository**:
    ```bash
