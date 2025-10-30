@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
-import { Camera, CameraOff } from 'lucide-react';
+import { Camera, CameraOff, Loader2 } from 'lucide-react';
 import { useWebcam } from '../hooks/useWebcam';
 
 interface WebcamViewProps {
   onVideoRef: (ref: HTMLVideoElement | null) => void;
   isActive: boolean;
+  isTensorFlowLoading: boolean;
 }
 
-export default function WebcamView({ onVideoRef, isActive }: WebcamViewProps) {
+export default function WebcamView({ onVideoRef, isActive, isTensorFlowLoading }: WebcamViewProps) {
   const { videoRef, isStreaming, error, startWebcam, stopWebcam } = useWebcam();
 
   useEffect(() => {
@@ -44,6 +45,15 @@ export default function WebcamView({ onVideoRef, isActive }: WebcamViewProps) {
       </div>
 
       <div className="relative bg-gray-900 aspect-video">
+        {isTensorFlowLoading ? (
+          <div className="absolute inset-0 flex items-center justify-center z-10 bg-gray-900/80">
+            <div className="text-center">
+              <Loader2 className="w-12 h-12 text-green-500 mx-auto mb-3 animate-spin" />
+              <p className="text-sm text-gray-300 font-medium">Spinning up TensorFlow...</p>
+            </div>
+          </div>
+        ) : null}
+
         {error ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center">

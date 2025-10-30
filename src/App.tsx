@@ -13,6 +13,7 @@ function App() {
   const [isClassifying, setIsClassifying] = useState(false);
   const [currentPredictions, setCurrentPredictions] = useState<Prediction[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isTensorFlowLoading, setIsTensorFlowLoading] = useState(false);
   const [classToCommandMapping, setClassToCommandMapping] = useState<Record<string, string>>({});
 
   const {
@@ -27,6 +28,7 @@ function App() {
   const {
     modelLoaded,
     isLoading: modelLoading,
+    classLabels: extractedClassLabels,
     loadModelFromFiles,
     predict,
   } = useModelInference();
@@ -36,8 +38,8 @@ function App() {
   }, []);
 
   const handleLoadModelFromFiles = useCallback(
-    async (files: File[], labels: string[]) => {
-      await loadModelFromFiles(files, labels);
+    async (files: File[]) => {
+      await loadModelFromFiles(files);
     },
     [loadModelFromFiles]
   );
@@ -46,10 +48,29 @@ function App() {
     setClassToCommandMapping(mapping);
   }, []);
 
-
+  const checkVideoStream = useCallback(() => {
+    if (videoElement && videoElement.readyState >= 2) {
+      return true;
+    }
+    return false;
+  }, [videoElement]);
 
   const runClassification = useCallback(async () => {
-    if (!videoElement || !modelLoaded || !isClassifying) return;
+    if (!videoElement || !modelLoaded) return;
+
+    if(!checkVideoStream()) {
+      setIsTensorFlowLoading(true);
+      addMessage('system', 'Waiting for video stream...');
+      await new Promise<void>((resolve) => {
+        const intervalId = setInterval(() => {
+          if (checkVideoStream()) {
+            clearInterval(intervalId);
+            setIsTensorFlowLoading(false);
+            resolve();
+          }
+        }, 100);
+      });
+    }
 
     try {
       setIsProcessing(true);
@@ -67,7 +88,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [videoElement, modelLoaded, isClassifying, predict, serialStatus, sendMessage, classToCommandMapping, addMessage]);
+  }, [videoElement, modelLoaded, predict, serialStatus, sendMessage, classToCommandMapping, addMessage, checkVideoStream]);
 
   useEffect(() => {
     if (!isClassifying) {
@@ -90,11 +111,14 @@ function App() {
       return;
     }
     setIsClassifying(true);
-  }, [modelLoaded]);
+    runClassification();
+    addMessage('system', 'Sorting started.');
+  }, [modelLoaded, runClassification]);
 
   const handleStopClassification = useCallback(() => {
     setIsClassifying(false);
     setCurrentPredictions([]);
+    addMessage('system', 'Sorting stopped.');
   }, []);
 
   return (
@@ -109,6 +133,7 @@ function App() {
               modelLoaded={modelLoaded}
               isClassifying={isClassifying}
               isModelLoading={modelLoading}
+              extractedClassLabels={extractedClassLabels}
               onConnectArduino={connectSerial}
               onDisconnectArduino={disconnectSerial}
               onLoadModelFromFiles={handleLoadModelFromFiles}
@@ -120,7 +145,11 @@ function App() {
           </div>
 
           <div className="lg:col-span-2 space-y-6">
-            <WebcamView onVideoRef={handleVideoRef} isActive={isClassifying} />
+            <WebcamView 
+              onVideoRef={handleVideoRef} 
+              isActive={isClassifying}
+              isTensorFlowLoading={isTensorFlowLoading}
+            />
 
             <PredictionPanel
               predictions={currentPredictions}
