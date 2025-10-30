@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { ArrowUp, ArrowDown, Info } from 'lucide-react';
 import { SerialMessage } from '../hooks/useSerialConnection';
 
@@ -8,10 +8,6 @@ interface SerialLogProps {
 
 export default function SerialLog({ messages }: SerialLogProps) {
   const logEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {
