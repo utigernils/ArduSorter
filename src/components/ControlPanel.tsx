@@ -1,5 +1,5 @@
 import { Usb, Upload, Play, Square, Send, FileUp } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import StatusIndicator from './StatusIndicator';
 import { ConnectionStatus } from '../hooks/useSerialConnection';
 
@@ -8,13 +8,16 @@ interface ControlPanelProps {
   modelLoaded: boolean;
   isClassifying: boolean;
   isModelLoading: boolean;
+  extractedClassLabels: string[];
+  classificationDelay: number;
   onConnectArduino: () => void;
   onDisconnectArduino: () => void;
-  onLoadModelFromFiles: (files: File[], labels: string[]) => void;
+  onLoadModelFromFiles: (files: File[]) => void;
   onStartClassification: () => void;
   onStopClassification: () => void;
   onSendCommand: (command: string) => void;
   onClassMappingChange: (mapping: Record<string, string>) => void;
+  onDelayChange: (delay: number) => void;
 }
 
 export default function ControlPanel({
@@ -22,6 +25,8 @@ export default function ControlPanel({
   modelLoaded,
   isClassifying,
   isModelLoading,
+  extractedClassLabels,
+  classificationDelay,
   onConnectArduino,
   onDisconnectArduino,
   onLoadModelFromFiles,
@@ -29,12 +34,25 @@ export default function ControlPanel({
   onStopClassification,
   onSendCommand,
   onClassMappingChange,
+  onDelayChange,
 }: ControlPanelProps) {
-  const [classLabels, setClassLabels] = useState('red,green,nothing');
   const [customCommand, setCustomCommand] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [classToCommandMapping, setClassToCommandMapping] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Update class labels when extracted from metadata.json
+  useEffect(() => {
+    if (extractedClassLabels.length > 0) {
+      // Update command mapping with extracted labels
+      const newMapping: Record<string, string> = {};
+      extractedClassLabels.forEach((label, index) => {
+        newMapping[label] = index.toString();
+      });
+      setClassToCommandMapping(newMapping);
+      onClassMappingChange(newMapping);
+    }
+  }, [extractedClassLabels, onClassMappingChange]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -47,27 +65,22 @@ export default function ControlPanel({
       alert('Please select model files');
       return;
     }
-    const labels = classLabels.split(',').map(l => l.trim()).filter(l => l);
-    onLoadModelFromFiles(selectedFiles, labels);
     
-    const defaultMapping: Record<string, string> = {};
-    labels.forEach((label, index) => {
-      defaultMapping[label] = index.toString();
-    });
-    setClassToCommandMapping(defaultMapping);
-    onClassMappingChange(defaultMapping);
-  };
-
-  const handleClassLabelsChange = (newLabels: string) => {
-    setClassLabels(newLabels);
+    // Check if metadata.json is included
+    const hasMetadata = selectedFiles.some(f => f.name === 'metadata.json');
+    const hasModel = selectedFiles.some(f => f.name === 'model.json');
     
-    const labels = newLabels.split(',').map(l => l.trim()).filter(l => l);
-    const newMapping: Record<string, string> = {};
-    labels.forEach((label, index) => {
-      newMapping[label] = classToCommandMapping[label] || index.toString();
-    });
-    setClassToCommandMapping(newMapping);
-    onClassMappingChange(newMapping);
+    if (!hasMetadata) {
+      alert('metadata.json file is required. Please include it in your selection.');
+      return;
+    }
+    
+    if (!hasModel) {
+      alert('model.json file is required. Please include it in your selection.');
+      return;
+    }
+    
+    onLoadModelFromFiles(selectedFiles);
   };
 
   const handleCommandMappingChange = (className: string, command: string) => {
@@ -122,8 +135,11 @@ export default function ControlPanel({
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-2">
-                Select Model Files (model.weights.bin & model.json)
+                Select Model Files (model.json, model.weights.bin & metadata.json)
               </label>
+              <p className="text-xs text-gray-500 mb-2">
+                <strong>Required:</strong> metadata.json (contains class labels), model.json, and weight files
+              </p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -148,19 +164,16 @@ export default function ControlPanel({
                 </div>
               )}
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Class Labels (comma-separated)
-              </label>
-              <input
-                type="text"
-                value={classLabels}
-                onChange={(e) => handleClassLabelsChange(e.target.value)}
-                placeholder="plastic,metal,paper,glass"
-                className="w-full px-3 py-2 border border-suva-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-suva-blue"
-                disabled={modelLoaded}
-              />
-            </div>
+            {extractedClassLabels.length > 0 && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs font-medium text-green-700 mb-1">
+                  ✓ Labels extracted from metadata.json:
+                </p>
+                <p className="text-xs text-green-600">
+                  {extractedClassLabels.join(', ')}
+                </p>
+              </div>
+            )}
             <button
               onClick={handleLoadFromFiles}
               disabled={modelLoaded || isModelLoading || selectedFiles.length === 0}
@@ -210,6 +223,25 @@ export default function ControlPanel({
           <h4 className="text-sm font-semibold text-suva-dark mb-3">
             Classification Control
           </h4>
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-600 mb-2">
+              Delay after "Action done." (ms): {classificationDelay}ms
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="5000"
+              step="100"
+              value={classificationDelay}
+              onChange={(e) => onDelayChange(Number(e.target.value))}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-suva-blue"
+            />
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
+              <span>0ms</span>
+              <span>2.5s</span>
+              <span>5s</span>
+            </div>
+          </div>
           {!isClassifying ? (
             <button
               onClick={onStartClassification}

@@ -13,18 +13,36 @@ export function useModelInference() {
   const [modelLoaded, setModelLoaded] = useState(false);
   const [classLabels, setClassLabels] = useState<string[]>([]);
 
-  const loadModelFromFiles = useCallback(async (files: File[], labels?: string[]) => {
+  const loadModelFromFiles = useCallback(async (files: File[]) => {
     setIsLoading(true);
     try {
       await tf.ready();
 
-      const modelJsonFile = files.find(f => f.name.endsWith('.json') || f.name === 'model.json');
+      // Find required files
+      const modelJsonFile = files.find(f => f.name === 'model.json');
+      const metadataJsonFile = files.find(f => f.name === 'metadata.json');
+      
       if (!modelJsonFile) {
-        throw new Error('No model.json file found');
+        throw new Error('model.json file is required');
+      }
+      
+      if (!metadataJsonFile) {
+        throw new Error('metadata.json file is required');
       }
 
       const weightsFiles = files.filter(f => f.name.includes('.bin') || f.name.includes('shard'));
 
+      // Parse metadata.json to extract labels
+      const metadataJson = JSON.parse(await metadataJsonFile.text());
+      
+      if (!metadataJson.labels || !Array.isArray(metadataJson.labels)) {
+        throw new Error('metadata.json must contain a "labels" array');
+      }
+
+      const extractedLabels = metadataJson.labels;
+      setClassLabels(extractedLabels);
+
+      // Load the model
       const modelJson = JSON.parse(await modelJsonFile.text());
 
       let loadedModel: tf.GraphModel | tf.LayersModel;
@@ -37,15 +55,13 @@ export function useModelInference() {
 
       setModel(loadedModel);
       setModelLoaded(true);
-
-      if (labels) {
-        setClassLabels(labels);
-      } else {
-        setClassLabels(Array.from({ length: 10 }, (_, i) => `Class ${i}`));
-      }
     } catch (error) {
       console.error('Model loading error:', error);
-      alert('Failed to load model files. Please ensure you have selected all necessary files (model.json and weights).');
+      if (error instanceof Error) {
+        alert(`Failed to load model: ${error.message}`);
+      } else {
+        alert('Failed to load model files. Please ensure you have selected all necessary files (model.json, metadata.json, and weights).');
+      }
     } finally {
       setIsLoading(false);
     }

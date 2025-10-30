@@ -15,6 +15,7 @@ function App() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTensorFlowLoading, setIsTensorFlowLoading] = useState(false);
   const [classToCommandMapping, setClassToCommandMapping] = useState<Record<string, string>>({});
+  const [classificationDelay, setClassificationDelay] = useState(1000); // Default 1 second delay
 
   const {
     status: serialStatus,
@@ -46,6 +47,10 @@ function App() {
 
   const handleClassMappingChange = useCallback((mapping: Record<string, string>) => {
     setClassToCommandMapping(mapping);
+  }, []);
+
+  const handleDelayChange = useCallback((delay: number) => {
+    setClassificationDelay(delay);
   }, []);
 
   const checkVideoStream = useCallback(() => {
@@ -100,10 +105,12 @@ function App() {
     if (isClassifying && serialMessages.length > 0) {
       const lastMessage = serialMessages[serialMessages.length - 1];
       if (lastMessage.data.includes('Action done.')) {
-        runClassification();
+        setTimeout(() => {
+          runClassification();
+        }, classificationDelay);
       }
     }
-  }, [serialMessages, isClassifying, runClassification]);
+  }, [serialMessages, isClassifying, runClassification, classificationDelay]);
 
   const handleStartClassification = useCallback(() => {
     if (!modelLoaded) {
@@ -134,6 +141,7 @@ function App() {
               isClassifying={isClassifying}
               isModelLoading={modelLoading}
               extractedClassLabels={extractedClassLabels}
+              classificationDelay={classificationDelay}
               onConnectArduino={connectSerial}
               onDisconnectArduino={disconnectSerial}
               onLoadModelFromFiles={handleLoadModelFromFiles}
@@ -141,6 +149,7 @@ function App() {
               onStopClassification={handleStopClassification}
               onSendCommand={sendMessage}
               onClassMappingChange={handleClassMappingChange}
+              onDelayChange={handleDelayChange}
             />
           </div>
 
