@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUp, ArrowDown, Info } from 'lucide-react';
 import { SerialMessage } from '../hooks/useSerialConnection';
 
 interface SerialLogProps {
@@ -39,14 +39,20 @@ export default function SerialLog({ messages }: SerialLogProps) {
               <div
                 key={index}
                 className={`flex items-start gap-2 ${
-                  msg.direction === 'sent' ? 'text-suva-blue' : 'text-green-600'
+                  msg.direction === 'sent' 
+                    ? 'text-suva-blue' 
+                    : msg.direction === 'received' 
+                    ? 'text-green-600' 
+                    : 'text-orange-600'
                 }`}
               >
                 <div className="flex-shrink-0 mt-0.5">
                   {msg.direction === 'sent' ? (
                     <ArrowUp className="w-3 h-3" />
-                  ) : (
+                  ) : msg.direction === 'received' ? (
                     <ArrowDown className="w-3 h-3" />
+                  ) : (
+                    <Info className="w-3 h-3" />
                   )}
                 </div>
                 <span className="text-gray-500 flex-shrink-0">

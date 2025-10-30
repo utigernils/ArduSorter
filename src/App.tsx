@@ -21,6 +21,7 @@ function App() {
     connect: connectSerial,
     disconnect: disconnectSerial,
     sendMessage,
+    addMessage,
   } = useSerialConnection();
 
   const {
@@ -52,6 +53,7 @@ function App() {
 
     try {
       setIsProcessing(true);
+      addMessage('system', 'Running classification...');
       const predictions = await predict(videoElement);
       setCurrentPredictions(predictions);
 
@@ -65,7 +67,7 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [videoElement, modelLoaded, isClassifying, predict, serialStatus, sendMessage, classToCommandMapping]);
+  }, [videoElement, modelLoaded, isClassifying, predict, serialStatus, sendMessage, classToCommandMapping, addMessage]);
 
   useEffect(() => {
     if (!isClassifying) {

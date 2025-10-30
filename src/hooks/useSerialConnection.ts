@@ -4,7 +4,7 @@ export type ConnectionStatus = 'connected' | 'disconnected' | 'awaiting';
 
 export interface SerialMessage {
   timestamp: Date;
-  direction: 'sent' | 'received';
+  direction: 'sent' | 'received' | 'system';
   data: string;
 }
 
@@ -15,7 +15,7 @@ export function useSerialConnection() {
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null);
 
-  const addMessage = useCallback((direction: 'sent' | 'received', data: string) => {
+  const addMessage = useCallback((direction: 'sent' | 'received' | 'system', data: string) => {
     setMessages((prev) => [
       ...prev.slice(-99),
       { timestamp: new Date(), direction, data },
@@ -102,5 +102,6 @@ export function useSerialConnection() {
     connect,
     disconnect,
     sendMessage,
+    addMessage,
   };
 }
