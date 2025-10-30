@@ -11,9 +11,9 @@ export interface SerialMessage {
 export function useSerialConnection() {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [messages, setMessages] = useState<SerialMessage[]>([]);
-  const portRef = useRef<SerialPort | null>(null);
-  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
-  const writerRef = useRef<WritableStreamDefaultWriter<Uint8Array> | null>(null);
+  const portRef = useRef<any>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
+  const writerRef = useRef<WritableStreamDefaultWriter<string> | null>(null);
 
   const addMessage = useCallback((direction: 'sent' | 'received' | 'system', data: string) => {
     setMessages((prev) => [
@@ -37,21 +37,32 @@ export function useSerialConnection() {
       setStatus('connected');
 
       const textDecoder = new TextDecoderStream();
-      const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+      port.readable.pipeTo(textDecoder.writable);
       const reader = textDecoder.readable.getReader();
       readerRef.current = reader;
 
       const textEncoder = new TextEncoderStream();
-      const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+      textEncoder.readable.pipeTo(port.writable);
       writerRef.current = textEncoder.writable.getWriter();
 
       (async () => {
+        let buffer = '';
         try {
           while (true) {
             const { value, done } = await reader.read();
             if (done) break;
             if (value) {
-              addMessage('received', value);
+              buffer += value;
+              
+              let newlineIndex;
+              while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+                const line = buffer.substring(0, newlineIndex).trim();
+                buffer = buffer.substring(newlineIndex + 1);
+                
+                if (line) {
+                  addMessage('received', line);
+                }
+              }
             }
           }
         } catch (error) {
