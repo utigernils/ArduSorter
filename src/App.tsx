@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ControlPanel from './components/ControlPanel';
@@ -14,7 +14,6 @@ function App() {
   const [currentPredictions, setCurrentPredictions] = useState<Prediction[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [classToCommandMapping, setClassToCommandMapping] = useState<Record<string, string>>({});
-  const classificationIntervalRef = useRef<number | null>(null);
 
   const {
     status: serialStatus,
@@ -69,23 +68,19 @@ function App() {
   }, [videoElement, modelLoaded, isClassifying, predict, serialStatus, sendMessage, classToCommandMapping]);
 
   useEffect(() => {
-    if (isClassifying && modelLoaded && videoElement) {
-      classificationIntervalRef.current = window.setInterval(() => {
+    if (!isClassifying) {
+      setCurrentPredictions([]);
+    }
+  }, [isClassifying]);
+
+  useEffect(() => {
+    if (isClassifying && serialMessages.length > 0) {
+      const lastMessage = serialMessages[serialMessages.length - 1];
+      if (lastMessage.data.includes('Action done.')) {
         runClassification();
-      }, 1000);
-    } else {
-      if (classificationIntervalRef.current) {
-        clearInterval(classificationIntervalRef.current);
-        classificationIntervalRef.current = null;
       }
     }
-
-    return () => {
-      if (classificationIntervalRef.current) {
-        clearInterval(classificationIntervalRef.current);
-      }
-    };
-  }, [isClassifying, modelLoaded, videoElement, runClassification]);
+  }, [serialMessages, isClassifying, runClassification]);
 
   const handleStartClassification = useCallback(() => {
     if (!modelLoaded) {
