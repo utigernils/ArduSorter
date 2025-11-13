@@ -8,7 +8,7 @@ const int leftPos = 0;         // Fully left
 const int rightPos = 180;      // Fully right
 
 const int shakeAmplitude = 30; // Degrees to shake for getNextItem
-const int shakeAmount = 16;     // Times the servo shakes
+const int shakeAmount = 6;     // Times the servo shakes
 const int shakeDelay = 60;     // Time between the shakes
 
 const int tiltShakeAmplitude = 10;
